@@ -23,7 +23,7 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-        /* شاشة التحميل الافتراضية لمنع ظهور المحرر للمشاهدين */
+        /* شاشة التحميل الافتراضية لمنع ظهور المحرر للمشاهدين نهائياً */
         #loadingScreen {
             display: flex;
             justify-content: center;
@@ -38,7 +38,7 @@
 
         /* إخفاء واجهة المحرر بشكل افتراضي */
         #editorUi {
-            display: none; /* سيتم تغييره برمجياً إلى flex فقط في حال لم يكن رابط عرض */
+            display: none; /* سيتم إظهارها برمجياً فقط إذا لم يكن الرابط لعرض صفحة مستقلة */
             flex-direction: column;
             height: 100%;
             padding: 20px;
@@ -93,7 +93,7 @@
         .btn-share-full { background: #6610f2; color: white; font-weight: bold; }
         .btn-share-full:hover { background: #520dc2; }
         
-        /* ستايل الزرار الجديد (النسخ والفتح التلقائي) */
+        /* ستايل الزرار المتقدم (النسخ والفتح التلقائي) */
         .btn-share-full-open { background: #e83e8c; color: white; font-weight: bold; }
         .btn-share-full-open:hover { background: #d63384; }
 
@@ -153,9 +153,9 @@
 </head>
 <body>
 
-    <!-- شاشة تحميل مبدئية تظهر بدلاً من المحرر حتى يتم التأكد من الرابط -->
+    <!-- شاشة تحميل مبدئية تظهر بدلاً من المحرر حتى يتم التأكد من الرابط (تمنع الوميض) -->
     <div id="loadingScreen">
-        جاري تهيئة الصفحة... ⏳
+        جاري تهيئة وتجهيز التطبيق... ⏳
     </div>
 
     <!-- واجهة المحرر (مخفية بالكامل في البداية) -->
@@ -176,7 +176,7 @@
                 
                 <button class="btn btn-share-full" id="fullPageShareBtn">رابط صفحة كاملة 🌐🔗</button>
                 
-                <!-- الزر الجديد: ينسخ الرابط ويفتحه تلقائياً -->
+                <!-- الزر المتقدم: ينسخ الرابط ويفتحه تلقائياً كصفحة كاملة -->
                 <button class="btn btn-share-full-open" id="fullPageShareOpenBtn">نسخ وفتح الصفحة تلقائياً 🚀</button>
                 
                 <button class="btn btn-success" id="openNewTabBtn">افتح في صفحة جديدة 🌐</button>
@@ -202,7 +202,6 @@
                 <div class="box-header">
                     <span>النتيجة المباشرة</span>
                 </div>
-                <!-- صلاحيات كاملة لعمل تطبيقات الذكاء الاصطناعي بشكل سليم -->
                 <iframe id="viewer" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads" allow="camera; microphone; fullscreen; clipboard-read; clipboard-write; web-share"></iframe>
             </div>
         </div>
@@ -236,20 +235,45 @@
         let icon192Data = checkFlag;
         let icon512Data = checkFlag;
 
-        // دالة الفحص الأولي (الأهم) عند تحميل الصفحة لمعالجة الروابط ومنع الوميض
+        // دالة الفحص الأولي والأهم (تمنع التجميد وتمنع وميض المحرر)
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const viewId = urlParams.get('view'); 
             const projectId = urlParams.get('id'); 
 
-            // 1. إذا كان هذا رابط "صفحة مستقلة"
+            // 1. إذا كان هذا رابط "صفحة مستقلة كاملة"
             if (viewId) {
                 db.ref('shared_codes/' + viewId).once('value').then((snapshot) => {
                     if (snapshot.exists()) {
                         const targetHtml = snapshot.val().htmlCode;
-                        document.open();
-                        document.write(targetHtml); // استبدال المستند بالكامل (وهذا سيمسح شاشة التحميل أيضاً)
-                        document.close();
+                        
+                        // تنظيف الصفحة تماماً وإزالة شاشة التحميل
+                        document.body.innerHTML = '';
+                        document.documentElement.style.margin = '0';
+                        document.documentElement.style.height = '100%';
+                        document.documentElement.style.overflow = 'hidden';
+                        document.body.style.margin = '0';
+                        document.body.style.height = '100%';
+                        document.body.style.overflow = 'hidden';
+                        document.body.style.backgroundColor = '#ffffff';
+                        
+                        // إنشاء إطار العرض الكامل (هذه الطريقة تمنع المتصفح من حظر السكربتات وتمنع تجمد التطبيق)
+                        const fullscreenIframe = document.createElement('iframe');
+                        fullscreenIframe.style.width = '100vw';
+                        fullscreenIframe.style.height = '100vh';
+                        fullscreenIframe.style.border = 'none';
+                        fullscreenIframe.style.margin = '0';
+                        fullscreenIframe.style.padding = '0';
+                        fullscreenIframe.style.display = 'block';
+                        
+                        // إعطاء الإطار كافة الصلاحيات اللازمة للعمل (ذكاء اصطناعي، كاميرا، مشاركة)
+                        fullscreenIframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads');
+                        fullscreenIframe.setAttribute('allow', 'camera; microphone; fullscreen; clipboard-read; clipboard-write; web-share');
+                        
+                        // حقن كود التطبيق ليعمل بكفاءة
+                        fullscreenIframe.srcdoc = targetHtml;
+                        
+                        document.body.appendChild(fullscreenIframe);
                     } else {
                         document.body.innerHTML = "<div style='text-align:center; margin-top:100px; font-family:sans-serif; direction:rtl; color:#e4e6eb;'><h2>عذراً، هذه الصفحة غير موجودة أو تم حذفها! ❌</h2></div>";
                     }
@@ -257,14 +281,14 @@
                     console.error("Error fetching data:", error);
                     document.body.innerHTML = "<div style='text-align:center; margin-top:100px; font-family:sans-serif; direction:rtl; color:#e4e6eb;'><h2>حدث خطأ أثناء تحميل الصفحة المباشرة! ❌</h2></div>";
                 });
-                return; // إيقاف الـ سكريبت هنا، ولن يظهر المحرر أبداً
+                return; // إيقاف الـ سكريبت هنا، ولن تظهر واجهة المحرر أبداً
             }
 
             // 2. إذا لم يكن رابط "صفحة مستقلة"، نقوم بإخفاء شاشة التحميل وإظهار واجهة المحرر
             document.getElementById('loadingScreen').style.display = 'none';
             document.getElementById('editorUi').style.display = 'flex';
 
-            // معالجة تشغيل واجهة المحرر العادية لـ id
+            // معالجة تشغيل واجهة المحرر العادية
             if (projectId) {
                 db.ref('shared_codes/' + projectId).once('value').then((snapshot) => {
                     if (snapshot.exists()) {
@@ -278,13 +302,12 @@
                     console.error("Error fetching data:", error);
                 });
             } else {
-                // الكود الافتراضي عند فتح الموقع لأول مرة
                 editor.value = "<!DOCTYPE html>\n<html>\n<head>\n  <title>صفحة جهات الاتصال</title>\n</head>\n<body>\n  <div style='text-align:center; margin-top:50px;'>\n    <h1 style='color:#007bff;'>أهلاً بيك!</h1>\n    <p>غير النص اللي جوه الـ title فوق، واضغط تحميل.. هتلاقي الـ PWA اتسمت بيه فوراً.</p>\n  </div>\n</body>\n</html>";
                 updateOutput();
             }
         };
 
-        // دالة تحديث النتيجة
+        // دالة تحديث النتيجة داخل المحاكي
         function updateOutput() {
             if(viewer) {
                 viewer.srcdoc = editor.value;
@@ -307,7 +330,7 @@
             event.target.value = ''; 
         });
 
-        // رفع أيقونة التطبيق
+        // رفع أيقونة التطبيق للـ PWA
         document.getElementById('pwaIconInput').addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -323,7 +346,7 @@
             reader.readAsDataURL(file);
         });
 
-        // الفتح في صفحة جديدة
+        // الفتح في صفحة جديدة (مؤقت)
         document.getElementById('openNewTabBtn').addEventListener('click', function() {
             const blob = new Blob([editor.value], { type: 'text/html' });
             window.open(URL.createObjectURL(blob), '_blank');
@@ -356,7 +379,7 @@
             document.body.removeChild(textarea);
         }
 
-        // مشاركة الرابط للمحرر
+        // مشاركة الرابط العادي (يفتح داخل المحرر)
         shareBtn.addEventListener('click', function() {
             const uniqueId = Math.random().toString(36).substring(2, 10);
             const currentUrl = window.location.href.split('?')[0];
@@ -373,7 +396,7 @@
             });
         });
 
-        // تشغيل ميزة لإنتاج رابط صفحة كاملة مستقلة
+        // إنشاء رابط صفحة كاملة مستقلة ونسخه فقط
         fullPageShareBtn.addEventListener('click', function() {
             const uniqueId = Math.random().toString(36).substring(2, 10);
             const currentUrl = window.location.href.split('?')[0];
@@ -390,7 +413,7 @@
             });
         });
 
-        // إنتاج الرابط + نسخه + فتح الصفحة تلقائياً
+        // الزر المتقدم: إنتاج الرابط + نسخه + فتح الصفحة تلقائياً في نافذة جديدة
         fullPageShareOpenBtn.addEventListener('click', function() {
             const uniqueId = Math.random().toString(36).substring(2, 10);
             const currentUrl = window.location.href.split('?')[0];
@@ -400,15 +423,15 @@
                 htmlCode: editor.value,
                 timestamp: Date.now()
             }).then(() => {
-                forceCopy(shareUrl, "تم الاستضافة.. سيتم فتح الصفحة المستقلة تلقائياً الآن! 🚀");
-                window.open(shareUrl, '_blank');
+                forceCopy(shareUrl, "تم الاستضافة بنجاح.. سيتم فتح الصفحة المستقلة تلقائياً الآن! 🚀");
+                window.open(shareUrl, '_blank'); // فتح الصفحة تلقائياً
             }).catch((error) => {
                 console.error("Firebase save error:", error);
                 alert("حدث خطأ أثناء الاستضافة.");
             });
         });
 
-        // زر لصق المنسوخ
+        // زر لصق الكود المنسوخ من الحافظة
         pasteBtn.addEventListener('click', async () => {
             try {
                 const text = await navigator.clipboard.readText();
@@ -419,7 +442,7 @@
             }
         });
 
-        // تفريغ المحرر
+        // تفريغ وتنظيف المحرر
         clearAllBtn.addEventListener('click', function() {
             editor.value = "";
             updateOutput();
@@ -431,11 +454,12 @@
             document.getElementById('pwaIconInput').value = "";
         });
 
-        // تبديل المود
+        // تبديل المود (النهاري/الليلي)
         themeToggleBtn.addEventListener('click', function() {
             document.body.classList.toggle('light-mode');
         });
 
+        // دالة مساعدة لتوليد أيقونة افتراضية للـ PWA
         function generateLetterIcon(text, size) {
             const canvas = document.createElement('canvas');
             canvas.width = size;
@@ -452,7 +476,7 @@
             return canvas.toDataURL('image/png').split(',')[1];
         }
 
-        // تحميل PWA
+        // تحميل ملف PWA المضغوط بالكامل
         downloadZipBtn.addEventListener('click', function() {
             const zip = new JSZip();
             zip.file("index.html", editor.value);
